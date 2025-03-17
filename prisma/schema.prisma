@@ -1,0 +1,102 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  ADVISOR
+  ADMIN
+}
+
+model User {
+  id       Int      @id @default(autoincrement())
+  username String   @unique
+  password String
+  role     UserRole
+  profile  Profile? 
+  student  Student?
+  advisor  Advisor?
+}
+
+model Profile {
+  id             Int      @id @default(autoincrement())
+  firstName      String
+  lastName       String
+  profilePicture String?
+  department     String?
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         Int      @unique
+}
+
+model Student {
+  id        Int      @id @default(autoincrement())
+  studentId String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int      @unique
+  advisor   Advisor? @relation(fields: [advisorId], references: [id])
+  advisorId Int?
+  appointments Appointment[]
+  comments  Comment[]
+}
+
+model Advisor {
+  id               Int      @id @default(autoincrement())
+  academicPosition String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId           Int      @unique
+  appointments     Appointment[]
+  announcements    Announcement[]
+  students        Student[]
+  comments        Comment[]
+}
+
+
+model Appointment {
+  id            Int      @id @default(autoincrement())
+  studentId     Int
+  advisorId     Int
+  requestedDate DateTime
+  confirmedDate DateTime?
+  subject       String
+  status        String   @default("pending")
+  student       Student  @relation(fields: [studentId], references: [id])
+  advisor       Advisor  @relation(fields: [advisorId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Announcement {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String
+  fileUrl   String?  // Optional file attachment
+  advisor   Advisor  @relation(fields: [advisorId], references: [id])
+  advisorId Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  advisorId Int
+  studentId Int
+  content   String
+  parentId  Int?     // Null for top-level comments
+  createdAt DateTime @default(now())
+
+  advisor   Advisor  @relation(fields: [advisorId], references: [id])
+  student   Student  @relation(fields: [studentId], references: [id])
+  parent    Comment? @relation("CommentParent", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentParent")
+}
